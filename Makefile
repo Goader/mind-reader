@@ -42,10 +42,13 @@ downloaded_data: timeseries roi design stimuli
 # ========== preparing data ==========
 
 parcelated_timeseries:
-	python3 scripts/generate_parcelated_timeseries.py \
-		--timeseries $(TIMESERIES_DIR)/subj*/timeseries_session*_run*.nii.gz \
-		--roi $(ROI_DIR)/subj*/??? \
-		--output $(PARCELATED_TIMESERIES_DIR)
+	for i in $(shell seq 1 $(SUBJECTS)); do \
+		mkdir -p $(PARCELATED_TIMESERIES_DIR)/subj0$${i}/; \
+		python3 scripts/generate_parcelated_timeseries.py \
+			--timeseries $(TIMESERIES_DIR)/subj0$${i}/timeseries_session*_run*.nii.gz \
+			--roi $(ROI_DIR)/subj0$${i}/HCP_MMP1.nii.gz \
+			--output_dir $(PARCELATED_TIMESERIES_DIR)/subj0$${i}/; \
+	done
 
 clip_embeddings:
 	python3 scripts/generate_clip_embeddings.py \

@@ -5,6 +5,9 @@ TIMESERIES_DIR = "$(DATA_DIR)/timeseries"
 ROI_DIR = "$(DATA_DIR)/roi"
 DESIGN_DIR = "$(DATA_DIR)/design"
 
+PARCELATED_TIMESERIES_DIR = "$(DATA_DIR)/parcelated_timeseries"
+CLIP_EMBEDDINGS_PATH = "$(DATA_DIR)/clip_embeddings.pt"
+
 ROI_TYPE = "HCP_MMP1"
 SUBJECTS = 8
 
@@ -13,22 +16,22 @@ SUBJECTS = 8
 
 timeseries:
 	for i in $(shell seq 1 $(SUBJECTS)); do \
-		mkdir -p "$(ROI_DIR)/subj0$(i)/"; \
-		aws s3 cp "$(S3_BUCKET)/nsddata_timeseries/ppdata/subj0$(i)/func1mm/timeseries/" "$(TIMESERIES_DIR)/subj0$(i)/" \
+		mkdir -p $(ROI_DIR)/subj0$${i}/; \
+		aws s3 cp $(S3_BUCKET)/nsddata_timeseries/ppdata/subj0$${i}/func1mm/timeseries/ $(TIMESERIES_DIR)/subj0$${i}/ \
 			--recursive --exclude "*" --include "timeseries_session*_run*.nii.gz"; \
 	done
 
 roi:
 	for i in $(shell seq 1 $(SUBJECTS)); do \
-		mkdir -p $(ROI_DIR)/subj0$(i)/; \
-		aws s3 cp $(S3_BUCKET)/nsddata/ppdata/subj0$(i)/func1mm/roi/$(ROI_TYPE).nii.gz $(ROI_DIR)/subj0$(i)/; \
+		mkdir -p $(ROI_DIR)/subj0$${i}/; \
+		aws s3 cp $(S3_BUCKET)/nsddata/ppdata/subj0$${i}/func1mm/roi/$(ROI_TYPE).nii.gz $(ROI_DIR)/subj0$${i}/; \
 	done
 
 design:
 	for i in $(shell seq 1 $(SUBJECTS)); do \
-		mkdir -p $(DESIGN_DIR)/subj0$(i)/; \
-		aws s3 cp $(S3_BUCKET)/nsddata_timeseries/ppdata/subj0$(i)/func1mm/design/ $(DESIGN_DIR)/subj0$(i)/ \
-			--recursive --exclude "*" --include "design_session*_run*.txt"; \
+		mkdir -p $(DESIGN_DIR)/subj0$${i}/; \
+		aws s3 cp $(S3_BUCKET)/nsddata_timeseries/ppdata/subj0$${i}/func1mm/design/ ${DESIGN_DIR}/subj0$${i}/ \
+			--recursive --exclude "*" --include "design_session*_run*.tsv"; \
 	done
 
 stimuli:
@@ -39,12 +42,15 @@ downloaded_data: timeseries roi design stimuli
 # ========== preparing data ==========
 
 parcelated_timeseries:
-	python3 scripts/generate_parcelated_timeseries.py ...
+	python3 scripts/generate_parcelated_timeseries.py \
+		--timeseries $(TIMESERIES_DIR)/subj*/timeseries_session*_run*.nii.gz \
+		--roi $(ROI_DIR)/subj*/??? \
+		--output $(PARCELATED_TIMESERIES_DIR)
 
 clip_embeddings:
 	python3 scripts/generate_clip_embeddings.py \
 		--images $(DATA_DIR)/nsd_stimuli.hdf5 \
-		--output $(DATA_DIR)/clip_embeddings.pt \
+		--output $(CLIP_EMBEDDINGS_PATH) \
 		--batch_size 64 \
 		--device cuda
 
@@ -62,7 +68,8 @@ clean_downloaded_data:
 	rm -rf $DATA_DIR/nsd_stimuli.hdf5
 
 clean_prepared_data:
-	rm -rf $DESIGN_DIR;
-	# todo add clip embeddings and parcelated timeseries
+	rm -rf $DESIGN_DIR; \
+	rm -rf $PARCELATED_TIMESERIES_DIR; \
+	rm -rf $CLIP_EMBEDDINGS_PATH
 
 clean: clean_downloaded_data clean_prepared_data

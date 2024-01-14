@@ -1,6 +1,7 @@
 import logging
 
 import hydra
+import wandb
 from omegaconf import DictConfig, OmegaConf
 from PIL import Image
 
@@ -28,7 +29,7 @@ def diffusion(pipe: StableUnCLIPImg2ImgPipeline, embedding: torch.Tensor) -> Ima
             num_inference_steps=50
         ).images[0]
 
-    return Image.fromarray(img_pred)
+    return img_pred
 
 
 def train(
@@ -72,12 +73,20 @@ def train(
 
     for pref, dataloader in zip(['val', 'test'], [datamodule.val_dataloader(), datamodule.test_dataloader()]):
         images = []
+        i = 0
         for batch in dataloader:
+            if i >= 16:
+                break
+
             _, embeddings, labels_mask = batch
             embeddings = embeddings[labels_mask]
             outputs = task.predict_step(batch, 0)
 
             for embedding, output in zip(embeddings, outputs):
+                i += 1
+                if i >= 16:
+                    break
+
                 img_gold = diffusion(pipe, embedding)
                 img_pred = diffusion(pipe, output)
 
@@ -88,10 +97,10 @@ def train(
                 images.append(new_img)
 
         wandb_logger.experiment.log({
-            f'{pref}_diffusion': wandb_logger.experiment.Image(
-                images,
+            f'{pref}_diffusion': [wandb.Image(
+                image,
                 caption=f'{pref} diffusion'
-            )
+            ) for image in images]
         })
 
 

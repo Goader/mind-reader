@@ -26,11 +26,11 @@ class EmbeddingAlignmentTask(pl.LightningModule):
         Potentially we could exploit another encoder model to embrace the Relaxed Contrastive Loss function
         which would force the learned embeddings to carry the semantic information of the input sequence
         by learning it from the other pre-trained encoder model.
-        
+
         That would be mixed with MSE loss or another one to force the model to learn the embeddings.
-        Hopefully, that would reduce the amount of data needed to train the model. 
+        Hopefully, that would reduce the amount of data needed to train the model.
         """
-        self.loss = nn.MSELoss()
+        self.loss = nn.CosineEmbeddingLoss()
 
     def _common_step(self, batch: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         input_seq, label_embeddings, labels_mask = batch
@@ -38,7 +38,19 @@ class EmbeddingAlignmentTask(pl.LightningModule):
 
         masked_model_output = model_output[labels_mask]
         model_embeddings = self.projection(masked_model_output)
-        loss = self.loss(model_embeddings, label_embeddings[labels_mask])
+        label_embeddings = label_embeddings[labels_mask]
+
+        positive_target = torch.ones(model_embeddings.size(0), dtype=torch.float32, device=model_embeddings.device)
+        positive_loss = self.loss(model_embeddings, label_embeddings, positive_target)
+
+        label_embeddings_behind = torch.roll(label_embeddings, 1, 0)
+        label_embeddings_ahead = torch.roll(label_embeddings, -1, 0)
+        negative_target = torch.zeros_like(positive_target)
+
+        negative_behind_loss = self.loss(model_embeddings, label_embeddings_behind, negative_target)
+        negative_ahead_loss = self.loss(model_embeddings, label_embeddings_ahead, negative_target)
+
+        loss = 0.2 * positive_loss + 0.4 * negative_behind_loss + 0.4 * negative_ahead_loss
 
         return model_embeddings, loss
 

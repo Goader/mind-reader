@@ -1,0 +1,7 @@
+max_seq_len: 512
+hidden_size: 180
+num_layers: 4
+num_attention_heads: 6
+activation: gelu
+dropout: 0.1
+dim_feedforward: 768

@@ -1,0 +1,10 @@
+target_hidden_size: 1024
+learning_rate: 3e-4
+weight_decay: 0.01
+max_epochs: 100
+log_every_n_steps: 50
+precision: 32
+gradient_clip_val: null
+gradient_clip_algorithm: null
+accumulate_grad_batches: 1
+checkpoint_path: null

@@ -1,0 +1,12 @@
+timeseries:
+  train: data/parcelated_timeseries
+  val: data/parcelated_timeseries
+  test: data/parcelated_timeseries
+design:
+    train: data/design
+    val: data/design
+    test: data/design
+embeddings: data/clip_embeddings.pt
+batch_size: 8
+num_workers: 0
+pin_memory: false

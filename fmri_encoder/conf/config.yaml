@@ -1,0 +1,11 @@
+stage: train
+seed: 0
+accelerator: gpu
+devices: -1
+huggingface_cache_dir: null
+checkpoint_output_dir: output/checkpoints
+defaults:
+  - datamodule: nsd
+  - task: embedding-alignment
+  - model: transformer
+  - _self_

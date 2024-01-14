@@ -164,3 +164,7 @@ data/*
 output
 outputs
 wandb
+
+data
+test.png
+sample_diffusion_data

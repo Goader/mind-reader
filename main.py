@@ -23,7 +23,7 @@ def diffusion(pipe: StableUnCLIPImg2ImgPipeline, embedding: torch.Tensor) -> Ima
     prompt = 'photorealistic; High quality'
     with torch.no_grad():
         img_pred = pipe(
-            image_embeds=embedding.unsqueeze(0).to('cpu'),
+            image_embeds=embedding.unsqueeze(0).to('cuda'),
             prompt=prompt,
             num_inference_steps=50
         ).images[0]
@@ -68,7 +68,7 @@ def train(
     task.eval()
 
     pipe = StableUnCLIPImg2ImgPipeline.from_pretrained('stabilityai/stable-diffusion-2-1-unclip')
-    pipe = pipe.to('cpu')
+    pipe = pipe.to('cuda')
 
     for pref, dataloader in zip(['val', 'test'], [datamodule.val_dataloader(), datamodule.test_dataloader()]):
         images = []

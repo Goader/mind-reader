@@ -57,6 +57,10 @@ class EmbeddingAlignmentTask(pl.LightningModule):
         self.log('test_loss', loss, on_step=True, on_epoch=True, logger=True)
         return loss
 
+    def predict_step(self, batch: Any, batch_idx: int, dataloader_idx: int = 0) -> Any:
+        model_output, loss = self._common_step(batch)
+        return model_output
+
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(
             self.parameters(),

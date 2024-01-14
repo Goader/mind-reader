@@ -51,7 +51,7 @@ class NSDDataset(Dataset):
                 f'number of design indices ({len(design_indices)}) ' \
                 f'does not match the number of timepoints ({timeseries.size(0)})'
             labels_mask = torch.tensor(design_indices, dtype=torch.bool, device='cpu')
-            embeddings = self.embeddings[design_indices]
+            embeddings = self.embeddings[[index - 1 for index in design_indices]]
 
         return timeseries, embeddings, labels_mask
 

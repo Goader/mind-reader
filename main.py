@@ -2,6 +2,7 @@ import logging
 
 import hydra
 from omegaconf import DictConfig, OmegaConf
+from PIL import Image
 
 import lightning.pytorch as pl
 from lightning.pytorch.plugins.environments import SLURMEnvironment
@@ -9,11 +10,25 @@ from lightning.pytorch.loggers import WandbLogger
 
 import torch
 
+from diffusers import StableUnCLIPImg2ImgPipeline
+
 from fmri_encoder.datamodule import NSDDataModule
 from fmri_encoder.model import FMRITransformerEncoder
 from fmri_encoder.task import EmbeddingAlignmentTask
 
 logger = logging.getLogger(__name__)
+
+
+def diffusion(pipe: StableUnCLIPImg2ImgPipeline, embedding: torch.Tensor) -> Image:
+    prompt = 'photorealistic; High quality'
+    with torch.no_grad():
+        img_pred = pipe(
+            image_embeds=embedding.unsqueeze(0).to('cpu'),
+            prompt=prompt,
+            num_inference_steps=50
+        ).images[0]
+
+    return Image.fromarray(img_pred)
 
 
 def train(
@@ -48,6 +63,36 @@ def train(
     )
     # if no checkpoint_path is passed, then it is None, thus the model will start from the very beginning
     trainer.fit(task, datamodule=datamodule, ckpt_path=cfg.task.checkpoint_path)
+    # preds = trainer.predict(task, dataloaders=datamodule.val_dataloader(), ckpt_path='last')[0]
+
+    task.eval()
+
+    pipe = StableUnCLIPImg2ImgPipeline.from_pretrained('stabilityai/stable-diffusion-2-1-unclip')
+    pipe = pipe.to('cpu')
+
+    for pref, dataloader in zip(['val', 'test'], [datamodule.val_dataloader(), datamodule.test_dataloader()]):
+        images = []
+        for batch in dataloader:
+            _, embeddings, labels_mask = batch
+            embeddings = embeddings[labels_mask]
+            outputs = task.predict_step(batch, 0)
+
+            for embedding, output in zip(embeddings, outputs):
+                img_gold = diffusion(pipe, embedding)
+                img_pred = diffusion(pipe, output)
+
+                new_img = Image.new('RGB', (img_gold.width, img_gold.height + img_pred.height))
+                new_img.paste(img_gold, (0, 0))
+                new_img.paste(img_pred, (0, img_gold.height))
+
+                images.append(new_img)
+
+        wandb_logger.experiment.log({
+            f'{pref}_diffusion': wandb_logger.experiment.Image(
+                images,
+                caption=f'{pref} diffusion'
+            )
+        })
 
 
 def evaluate(
